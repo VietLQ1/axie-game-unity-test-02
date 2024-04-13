@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
+using Unity.Mathematics;
 using UnityEngine;
 
 namespace Game
@@ -7,9 +8,10 @@ namespace Game
     public class AIController : MonoBehaviour
     {
         DefenseState _defenseState;
-        int _shootAngle = 30;
-        int _power = 0;
-
+        int _shootAngle = 0;
+        int _power = 100;
+        AxieObject Player;
+        Vector2 _playerpos;
         private void Awake()
         {
             var manager = FindObjectOfType<GameDefenseManager>();
@@ -22,7 +24,12 @@ namespace Game
                 _defenseState = manager.GetState();
             }
         }
-
+        private void Start()
+        {
+            Player = FindObjectOfType<AxieObject>();
+            _playerpos = Player.transform.localPosition;
+            //Debug.Log(_playerpos);
+        }
         // Update is called once per frame
         void Update()
         {
@@ -30,7 +37,10 @@ namespace Game
 
             EnemyState nearestEnemy = FindTarget();
             if (nearestEnemy == null) return;
-
+            //Debug.Log(nearestEnemy.pos);
+            Vector2 _aimline = nearestEnemy.pos - _playerpos;
+            _shootAngle = -(int)Vector2.Angle(_aimline, Vector2.right) + (int)nearestEnemy.pos.x + 10*math.max(((int)nearestEnemy.pos.x/10),1);
+            //Debug.Log(nearestEnemy.pos.x); 
             int nearestPower = DeterminePower(nearestEnemy.pos);
             if (nearestPower != -1)
             {
@@ -66,7 +76,7 @@ namespace Game
             _power += 10;
             if(_power > 100)
             {
-                _power = 0;
+                _power = 100;
             }
             return _power;
         }

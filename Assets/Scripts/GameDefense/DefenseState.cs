@@ -317,6 +317,8 @@ namespace Game
             playerState.shootDelay = SHOOT_DELAY_TIME;
             float vx = Mathf.Cos(angle * Mathf.Deg2Rad);
             float vy = Mathf.Sin(angle * Mathf.Deg2Rad);
+            //Debug.Log("vx:" + vx.ToString());
+            //Debug.Log("vy:" + vy.ToString());
 
             BulletState bulletState = new BulletState();
             bulletState.id = bulletCount++;
