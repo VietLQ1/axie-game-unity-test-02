@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using Unity.Mathematics;
@@ -8,7 +9,7 @@ namespace Game
     public class AIController : MonoBehaviour
     {
         DefenseState _defenseState;
-        int _shootAngle = 0;
+        int _shootAngle = 45;
         int _power = 100;
         AxieObject Player;
         Vector2 _playerpos;
@@ -29,6 +30,7 @@ namespace Game
             Player = FindObjectOfType<AxieObject>();
             _playerpos = Player.transform.localPosition;
             //Debug.Log(_playerpos);
+            //Debug.Log(Mathf.Cos(_shootAngle * Mathf.Deg2Rad));
         }
         // Update is called once per frame
         void Update()
@@ -38,13 +40,15 @@ namespace Game
             EnemyState nearestEnemy = FindTarget();
             if (nearestEnemy == null) return;
             //Debug.Log(nearestEnemy.pos);
-            Vector2 _aimline = nearestEnemy.pos - _playerpos;
-            _shootAngle = -(int)Vector2.Angle(_aimline, Vector2.right) + (int)nearestEnemy.pos.x + 10*math.max(((int)nearestEnemy.pos.x/10),1);
-            //Debug.Log(nearestEnemy.pos.x); 
-            int nearestPower = DeterminePower(nearestEnemy.pos);
+            //Vector2 _aimline = nearestEnemy.pos - _playerpos;
+            //_shootAngle = -(int)Vector2.Angle(_aimline, Vector2.right) + (int)nearestEnemy.pos.x + 10*math.max(((int)nearestEnemy.pos.x/10),1);
+            //Debug.Log(nearestEnemy.pos); 
+            
+            
+            int nearestPower = DeterminePower(nearestEnemy);
             if (nearestPower != -1)
             {
-                if (_defenseState.energy >= DefenseState.ENERGY_SHOT_MAX_CHARGE)
+                if (_defenseState.energy >= DefenseState.ENERGY_SHOT_MAX_CHARGE && _defenseState.enemyStates.Count >= 2 && nearestEnemy.pos.x <= 15f)
                 {
                     _defenseState.DoShootSpecial(_shootAngle, nearestPower);
                 }
@@ -71,14 +75,60 @@ namespace Game
             return nearestEnemy;
         }
 
-        int DeterminePower(Vector2 target)
+        int DeterminePower(EnemyState target)
         {
-            _power += 10;
-            if(_power > 100)
+            float L = Mathf.Abs(target.pos.x - _playerpos.x);
+            float h = -Mathf.Abs(target.pos.y - _playerpos.y);
+            float s = target.speed;
+            float _speed0 = DetermineSpeed(L, h, s);
+            if(_speed0 < 4f)
             {
                 _power = 100;
+                return _power;
             }
+            _power = (int)((_speed0 - DefenseState.POWER_MIN)*100f / DefenseState.POWER_BOOST_MAX);
+            //Debug.Log(_speed0);
+            //Debug.Log(_power);
             return _power;
+        }
+
+        float DetermineSpeed(float L , float h, float s)
+        {
+            float _speed0 = 0f;
+            float _tri = Mathf.Cos(_shootAngle * Mathf.Deg2Rad);
+            float term1 = L * _tri * _tri - h * _tri * _tri - (DefenseState.GRAVITY / 2) * DefenseState.FIXED_TIME_STEP * L * _tri;
+            float term2 = s * L * _tri - 2 * h * s * _tri - (DefenseState.GRAVITY / 2) * L * L - (DefenseState.GRAVITY / 2) * DefenseState.FIXED_TIME_STEP * L * s;
+            float term3 = -h * s * s;
+            //Debug.Log(term1);
+            //Debug.Log(term2);
+            //Debug.Log(term3);
+            _speed0 = QuadSolve(term1, term2, term3);
+            //Debug.Log(_speed0);
+            return _speed0;
+        }
+        float QuadSolve(float a, float b, float c)
+        {
+            if(a == 0)
+            {
+                if(b  == 0){ return 0f; }
+                return -c / b;
+            }
+            float sqrtpart = (b * b) - (4 * a * c);
+            if (sqrtpart < 0)
+            {
+                return 0f;
+            }
+            float r1 = ((-1f) * b + Mathf.Sqrt(sqrtpart)) / (2f * a);
+            float r2 = ((-1f) * b - Mathf.Sqrt(sqrtpart)) / (2f * a);
+            if(r1 <= 40 && r1 >= 4)
+            {
+                return r1;
+            }
+            else if (r2 <= 40 && r2 >= 4)
+            {
+                return r2;
+            }
+            return 0f;
         }
     }
 }
