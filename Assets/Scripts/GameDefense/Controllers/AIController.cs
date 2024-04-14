@@ -29,8 +29,6 @@ namespace Game
         {
             Player = FindObjectOfType<AxieObject>();
             _playerpos = Player.transform.localPosition;
-            //Debug.Log(_playerpos);
-            //Debug.Log(Mathf.Cos(_shootAngle * Mathf.Deg2Rad));
         }
         // Update is called once per frame
         void Update()
@@ -39,16 +37,11 @@ namespace Game
 
             EnemyState nearestEnemy = FindTarget();
             if (nearestEnemy == null) return;
-            //Debug.Log(nearestEnemy.pos);
-            //Vector2 _aimline = nearestEnemy.pos - _playerpos;
-            //_shootAngle = -(int)Vector2.Angle(_aimline, Vector2.right) + (int)nearestEnemy.pos.x + 10*math.max(((int)nearestEnemy.pos.x/10),1);
-            //Debug.Log(nearestEnemy.pos); 
-            
             
             int nearestPower = DeterminePower(nearestEnemy);
             if (nearestPower != -1)
             {
-                if (_defenseState.energy >= DefenseState.ENERGY_SHOT_MAX_CHARGE && _defenseState.enemyStates.Count >= 2 && nearestEnemy.pos.x <= 15f)
+                if (_defenseState.energy >= DefenseState.ENERGY_SHOT_MAX_CHARGE && _defenseState.enemyStates.Count >= 3 && nearestEnemy.pos.x <= 18f)
                 {
                     _defenseState.DoShootSpecial(_shootAngle, nearestPower);
                 }
@@ -80,55 +73,63 @@ namespace Game
             float L = Mathf.Abs(target.pos.x - _playerpos.x);
             float h = -Mathf.Abs(target.pos.y - _playerpos.y);
             float s = target.speed;
-            float _speed0 = DetermineSpeed(L, h, s);
+            PowerSolver _pow = new PowerSolver(L, h, s, _shootAngle);
+            float _speed0 = _pow.DetermineSpeed();
             if(_speed0 < 4f)
             {
                 _power = 100;
                 return _power;
             }
             _power = (int)((_speed0 - DefenseState.POWER_MIN)*100f / DefenseState.POWER_BOOST_MAX);
-            //Debug.Log(_speed0);
-            //Debug.Log(_power);
             return _power;
         }
-
-        float DetermineSpeed(float L , float h, float s)
+        public class PowerSolver
         {
-            float _speed0 = 0f;
-            float _tri = Mathf.Cos(_shootAngle * Mathf.Deg2Rad);
-            float term1 = L * _tri * _tri - h * _tri * _tri - (DefenseState.GRAVITY / 2) * DefenseState.FIXED_TIME_STEP * L * _tri;
-            float term2 = s * L * _tri - 2 * h * s * _tri - (DefenseState.GRAVITY / 2) * L * L - (DefenseState.GRAVITY / 2) * DefenseState.FIXED_TIME_STEP * L * s;
-            float term3 = -h * s * s;
-            //Debug.Log(term1);
-            //Debug.Log(term2);
-            //Debug.Log(term3);
-            _speed0 = QuadSolve(term1, term2, term3);
-            //Debug.Log(_speed0);
-            return _speed0;
-        }
-        float QuadSolve(float a, float b, float c)
-        {
-            if(a == 0)
+            private int _shootAngle;
+            private float L;
+            private float h;
+            private float s;
+            public PowerSolver(float l, float h, float s, int shootAngle)
             {
-                if(b  == 0){ return 0f; }
-                return -c / b;
+                L = l;
+                this.h = h;
+                this.s = s;
+                _shootAngle = shootAngle;
             }
-            float sqrtpart = (b * b) - (4 * a * c);
-            if (sqrtpart < 0)
+            public float DetermineSpeed()
             {
+                float _speed0 = 0f;
+                float _tri = Mathf.Cos(_shootAngle * Mathf.Deg2Rad);
+                float term1 = L * _tri * _tri - h * _tri * _tri - (DefenseState.GRAVITY / 2) * DefenseState.FIXED_TIME_STEP * L * _tri;
+                float term2 = s * L * _tri - 2 * h * s * _tri - (DefenseState.GRAVITY / 2) * L * L - (DefenseState.GRAVITY / 2) * DefenseState.FIXED_TIME_STEP * L * s;
+                float term3 = -h * s * s;
+                _speed0 = QuadSolve(term1, term2, term3);
+                return _speed0;
+            }
+            float QuadSolve(float a, float b, float c)
+            {
+                if (a == 0)
+                {
+                    if (b == 0) { return 0f; }
+                    return -c / b;
+                }
+                float sqrtpart = (b * b) - (4 * a * c);
+                if (sqrtpart < 0)
+                {
+                    return 0f;
+                }
+                float r1 = ((-1f) * b + Mathf.Sqrt(sqrtpart)) / (2f * a);
+                float r2 = ((-1f) * b - Mathf.Sqrt(sqrtpart)) / (2f * a);
+                if (r1 <= 40 && r1 >= 4)
+                {
+                    return r1;
+                }
+                else if (r2 <= 40 && r2 >= 4)
+                {
+                    return r2;
+                }
                 return 0f;
             }
-            float r1 = ((-1f) * b + Mathf.Sqrt(sqrtpart)) / (2f * a);
-            float r2 = ((-1f) * b - Mathf.Sqrt(sqrtpart)) / (2f * a);
-            if(r1 <= 40 && r1 >= 4)
-            {
-                return r1;
-            }
-            else if (r2 <= 40 && r2 >= 4)
-            {
-                return r2;
-            }
-            return 0f;
         }
     }
 }
